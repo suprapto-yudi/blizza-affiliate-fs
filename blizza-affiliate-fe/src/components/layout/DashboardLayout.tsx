@@ -1,53 +1,59 @@
-// src/components/layout/DashboardLayout.tsx (Modifikasi Layout)
+// src/components/layout/DashboardLayout.tsx (Koreksi Final)
 'use client'; 
-import React, { useEffect } from 'react'; // <<< TAMBAH useEffect
+import React, { useEffect } from 'react';
 import Link from 'next/link'; 
-import { useRouter } from 'next/navigation'; // <<< TAMBAH useRouter
-import { AuthService } from '@/lib/Auth'; // <<< IMPOR AUTH SERVICE
+import { useRouter, usePathname } from 'next/navigation'; // <<< TAMBAH usePathname
+import { AuthService } from '@/lib/Auth'; 
 
-// NavLink Component dan Icon definitions
-const NavLink = ({ href, target, icon, children }: { href: string, target: string, icon: React.ReactNode, children: React.ReactNode }) => {
-    // Menggunakan window.location.pathname untuk menentukan link aktif
-    const isActive = typeof window !== 'undefined' && window.location.pathname === href;
-    const activeClass = isActive ? 'bg-pale-pink text-rose-gold font-semibold' : 'text-gray-500 hover:bg-pale-pink hover:text-rose-gold';
+// --- Icon Definitions (di luar komponen utama) ---
+const HomeIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>);
+const LeaderboardIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>);
+const RewardsIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2 9 3.343 9 5s1.343 3 3 3zm0 2c-2.21 0-4 1.79-4 4v1a2 2 0 002 2h4a2 2 0 002-2v-1c0-2.21-1.79-4-4-4zm0 6H9v2h6v-2z" /></svg>);
+const SettingsIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>);
+const LogoutIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>);
+
+
+// NavLink Component: Diubah untuk menggunakan usePathname
+const NavLink = ({ href, icon, children }: { href: string, icon: React.ReactNode, children: React.ReactNode }) => {
+    const pathname = usePathname(); // <<< MENGGUNAKAN HOOK PATHNAME
+    const isActive = pathname === href;
+    const activeClass = isActive 
+        ? 'bg-pale-pink text-rose-gold font-semibold' 
+        : 'text-gray-500 hover:bg-pale-pink hover:text-rose-gold';
 
     return (
-        <Link href={href} className={`nav-link flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeClass}`}>
+        <Link 
+            href={href} 
+            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeClass}`}
+        >
             {icon}
             <span>{children}</span>
         </Link>
     );
 };
 
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
-    // State atau logic sidebar mobile (diabaikan untuk kesederhanaan, tapi ini tempatnya)
-    
-    // Icon SVG disederhanakan
-    const HomeIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>);
-    const LeaderboardIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>);
-    const RewardsIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2 9 3.343 9 5s1.343 3 3 3zm0 2c-2.21 0-4 1.79-4 4v1a2 2 0 002 2h4a2 2 0 002-2v-1c0-2.21-1.79-4-4-4zm0 6H9v2h6v-2z" /></svg>);
-    const SettingsIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>);
-    const LogoutIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>);
 
     // LOGIC PROTEKSI AUTH
     useEffect(() => {
+        // Cek token saat component dimuat
         if (!AuthService.isLoggedIn()) {
             router.push('/login'); // Redirect jika tidak ada token
         }
     }, [router]);
 
+    // HANDLER LOGOUT
     const handleLogout = () => {
-        AuthService.logout(); // Hapus token
-        router.push('/login'); // Redirect ke halaman login
+        AuthService.logout(); 
+        router.push('/login');
     };
 
-    // Jika belum login, tampilkan loading atau null untuk menghindari flicker
+    // Tampilkan null/loading jika belum login (agar tidak ada flicker)
     if (!AuthService.isLoggedIn()) {
-        return null; // Tampilkan kosong saat redirect
+        return null; 
     }
-
-    // ... (Semua JSX Sidebar dan Main Content di bawah ini tetap sama) ...
 
     return (
         <div className="flex h-screen bg-pale-pink overflow-hidden">
@@ -59,25 +65,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                 </div>
                 <nav className="space-y-2 flex-grow">
-                    <NavLink href="/dashboard" target="dashboard" icon={HomeIcon}>Dashboard</NavLink>
-                    <NavLink href="/leaderboard" target="leaderboard" icon={LeaderboardIcon}>Leaderboard</NavLink>
-                    <NavLink href="/rewards" target="rewards" icon={RewardsIcon}>Rewards</NavLink>
-                    <NavLink href="/settings" target="settings" icon={SettingsIcon}>Settings</NavLink>
+                    {/* NAVIGASI DENGAN LOGIC HIGHLIGHT TERBARU */}
+                    <NavLink href="/dashboard" icon={HomeIcon}>Dashboard</NavLink>
+                    <NavLink href="/leaderboard" icon={LeaderboardIcon}>Leaderboard</NavLink>
+                    <NavLink href="/rewards" icon={RewardsIcon}>Rewards</NavLink>
+                    <NavLink href="/settings" icon={SettingsIcon}>Settings</NavLink>
                 </nav>
-                <div>
-                    <button 
+                
+                {/* TOMBOL LOGOUT */}
+                <div className="p-4 mt-auto">
+                    <button
                         onClick={handleLogout}
-                        className="flex items-center w-full justify-center space-x-3 px-4 py-3 text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"
+                        className="w-full flex items-center p-3 rounded-xl text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-500 transition-colors font-semibold justify-center"
                     >
                         {LogoutIcon}
-                        <span>Logout</span>
+                        <span className="ml-3">Logout</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main content */}
             <main className="flex-1 overflow-y-auto bg-grid-pattern">
-                {/* Hamburger Menu Button (Placeholder untuk fungsionalitas Mobile) */}
+                {/* Hamburger Menu Button (Mobile) - Tidak diubah */}
                 <button className="md:hidden fixed top-4 right-4 p-2 rounded-md text-gray-500 bg-white shadow z-40">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />

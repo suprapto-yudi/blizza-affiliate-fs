@@ -48,12 +48,20 @@ const authMiddleware = (req, res, next) => {
 // server.js (Endpoint 1: Pendaftaran Pengguna Baru - SIGN UP)
 
 app.post('/api/signup', async (req, res) => {
-    // Ambil data kiriman
-    const { email, password, name } = req.body; 
+    // <<< PERBAIKAN DI SINI: Ambil semua field yang dikirim form >>>
+    const { 
+        email, 
+        password, 
+        fullName, 
+        phone, 
+        shopeeAccount, 
+        address 
+    } = req.body; 
 
-    // Perbaiki validasi agar sesuai dengan data yang kamu kirim (email, password, name)
-    if (!email || !password || !name) {
-        return res.status(400).json({ message: 'Email, password, dan nama wajib diisi.' });
+    // --- Validasi semua field wajib diisi ---
+    // Gunakan fullName, bukan name!
+    if (!email || !password || !fullName || !phone || !shopeeAccount || !address) {
+        return res.status(400).json({ message: 'Semua field wajib diisi. Mohon lengkapi data.' });
     }
 
     try {
@@ -65,17 +73,18 @@ app.post('/api/signup', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Buat user baru di database DENGAN MEMBERIKAN NILAI DEFAULT UNTUK FIELD WAJIB
+        // Buat user baru di database DENGAN DATA LENGKAP
         user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
-                fullName: name, // <<< MAPPING: name dari Hoppscotch ke fullName di Prisma
-                phone: '0000', // <<< WAJIB DIBERIKAN DEFAULT VALUE
-                shopeeAccount: 'N/A', // <<< WAJIB DIBERIKAN DEFAULT VALUE
-                address: 'Not Provided', // <<< WAJIB DIBERIKAN DEFAULT VALUE
+                fullName, // Gunakan fullName
+                phone,
+                shopeeAccount,
+                address,
             },
-            select: { id: true, email: true, fullName: true }
+            // Hanya kembalikan field yang aman
+            select: { id: true, email: true, fullName: true, phone: true, shopeeAccount: true, address: true } 
         });
 
         res.status(201).json({ success: true, message: 'Pendaftaran Berhasil!', user });

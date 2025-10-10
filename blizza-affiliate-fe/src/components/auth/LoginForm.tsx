@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthService } from '@/lib/Auth';
 
 // Catatan: Dummy DB dihapus, sekarang kita panggil backend.
 
@@ -53,6 +54,7 @@ export default function LoginForm() {
             // 3. Sukses: Simpan Token (Jika ada) dan Redirect
             // ==> alert(`Login Berhasil! Selamat datang, ${data.user.fullName || 'Affiliate'}.`);
             // kode baris di atas dihilangkan karena kita tidak perlu alert.
+            AuthService.setToken(data.token); // Simpan token
 
             // Di sini, kamu harus menyimpan token JWT (data.token) ke Local Storage
             // atau Cookies menggunakan helper dari src/lib/Auth.ts.
@@ -60,6 +62,8 @@ export default function LoginForm() {
 
             // Redirect ke Dashboard setelah login sukses
             router.push('/dashboard'); 
+
+            return; // <<< PENTING: HENTIKAN EKSEKUSI DI SINI
 
         } catch (err) {
             // Error Jaringan (misal, backend belum running)
