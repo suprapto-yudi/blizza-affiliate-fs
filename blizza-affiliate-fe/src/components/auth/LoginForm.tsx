@@ -32,8 +32,8 @@ export default function LoginForm() {
         }
 
         try {
-            // 2. Pemanggilan API ke Backend Express (Port 5000)
-            const response = await fetch('http://localhost:5000/api/login', { // <<< AKAN KITA BUAT
+            // 2. Pemanggilan API ke Backend Express (Port 4000)
+            const response = await fetch('http://localhost:4000/api/login', { // <<< AKAN KITA BUAT
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -51,8 +51,9 @@ export default function LoginForm() {
             }
             
             // 3. Sukses: Simpan Token (Jika ada) dan Redirect
-            alert(`Login Berhasil! Selamat datang, ${data.user.fullName || 'Affiliate'}.`);
-            
+            // ==> alert(`Login Berhasil! Selamat datang, ${data.user.fullName || 'Affiliate'}.`);
+            // kode baris di atas dihilangkan karena kita tidak perlu alert.
+
             // Di sini, kamu harus menyimpan token JWT (data.token) ke Local Storage
             // atau Cookies menggunakan helper dari src/lib/Auth.ts.
             // Contoh sederhana: localStorage.setItem('authToken', data.token);

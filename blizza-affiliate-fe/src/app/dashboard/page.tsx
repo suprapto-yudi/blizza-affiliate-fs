@@ -1,70 +1,234 @@
+'use client'; 
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/lib/ApiService'; // Service untuk API Call (dengan JWT)
+import { RocketIcon, CheckIcon, CrossCircledIcon } from '@radix-ui/react-icons'; 
+import { PlusIcon, Trash2Icon } from 'lucide-react'; // Icon untuk fitur baru
 
-// Ambil kode Dashboard Page Content dari HTML aslimu (setelah konversi)
+// Definisikan tipe data ToDo yang diharapkan dari backend
+interface Todo {
+    id: number;
+    userId: number;
+    title: string;
+    description: string | null;
+    isCompleted: boolean;
+    createdAt: string;
+}
+
+// Tipe data respons API untuk array ToDo
+interface TodoResponse {
+    todos: Todo[];
+}
+
+
 const DashboardContent = () => {
-    // Menggunakan kode Dashboard Page Content dari HTML aslimu
+    // 1. STATE MANAGEMENT
+    const [todos, setTodos] = useState<Todo[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
+    // State untuk form input
+    const [newTodoTitle, setNewTodoTitle] = useState('');
+    const [isPosting, setIsPosting] = useState(false);
+
+    // 2. DATA FETCHING (READ /todos) - Dibuat Reusable
+    const fetchTodos = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        // Panggil API GET /api/todos. Token JWT otomatis ditambahkan.
+        const result = await apiFetch<TodoResponse>('/todos'); 
+
+        if (result.success && result.data?.todos) {
+            setTodos(result.data.todos);
+        } else {
+            setError(result.message || 'Gagal mengambil data To-Do List. Cek server backend.');
+        }
+        setIsLoading(false);
+    }, []); 
+
+    // Panggil fetchTodos saat component mount
+    useEffect(() => {
+        fetchTodos();
+    }, [fetchTodos]); 
+    
+    
+    // 3. LOGIC HANDLE CREATE TODO (POST /todos)
+    const handleAddTodo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTodoTitle.trim()) return; 
+
+        setIsPosting(true);
+
+        const result = await apiFetch<{ todo: Todo }>('/todos', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                title: newTodoTitle.trim(),
+                description: null 
+            }),
+        });
+
+        if (result.success && result.data?.todo) {
+            // Update UI secara optimis
+            setTodos(prevTodos => [result.data!.todo, ...prevTodos]); // Tambah di awal list
+            setNewTodoTitle(''); 
+        } else {
+            alert(`Gagal membuat To-Do: ${result.message}`);
+        }
+
+        setIsPosting(false);
+    };
+
+    // src/app/dashboard/page.tsx (Di dalam const DashboardContent = () => { ... })
+
+    // --- LOGIC HANDLE UPDATE STATUS (PUT /todos/:id) ---
+    const handleToggleComplete = async (todoId: number, currentStatus: boolean) => {
+        // Optimistic Update: Update UI dulu sebelum API merespons, untuk UX yang cepat
+        setTodos(prevTodos => 
+            prevTodos.map(t => 
+                t.id === todoId ? { ...t, isCompleted: !currentStatus } : t
+            )
+        );
+
+        const result = await apiFetch<any>(`/todos/${todoId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ isCompleted: !currentStatus }),
+        });
+
+        if (!result.success) {
+            // Rollback jika API gagal
+            alert('Gagal update status! Koneksi terputus atau token kadaluarsa.');
+            fetchTodos(); // Re-fetch data yang benar
+        }
+        // Tidak perlu update state lagi karena sudah di-update secara optimis di awal
+    };
+
+    // --- LOGIC HANDLE DELETE TODO (DELETE /todos/:id) ---
+    const handleDeleteTodo = async (todoId: number) => {
+        if (!confirm('Yakin ingin menghapus To-Do ini?')) return; // Konfirmasi hapus
+
+        const result = await apiFetch<any>(`/todos/${todoId}`, {
+            method: 'DELETE',
+        });
+
+        if (result.success) {
+            // Update UI: Hapus ToDo dari state lokal
+            setTodos(prevTodos => prevTodos.filter(t => t.id !== todoId));
+        } else {
+            alert('Gagal menghapus To-Do: ' + result.message);
+        }
+    };
+
+    // 4. LOGIC PERHITUNGAN STATUS
+    const completedTodosCount = todos.filter(t => t.isCompleted).length;
+    const totalTodos = todos.length;
+    const progress = totalTodos > 0 ? Math.round((completedTodosCount / totalTodos) * 100) : 0;
+
+
+    // --- RENDER KONTEN DINAMIS ---
+    
     return (
         <>
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-                {/* Asumsi nama user diambil dari state/props di masa depan */}
-                <div>
-                    <h1 className="text-3xl font-bold">Welcome back, Suryani! 👋</h1>
-                    <p className="text-gray-500 mt-1">Here's your affiliate performance overview.</p>
-                </div>
-            </header>
+            <h1 className="text-3xl font-bold mb-4">Affiliate Dashboard, Boss! 🌟</h1>
             
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="glassmorphism p-6 rounded-2xl shadow-lg flex items-center space-x-4">
-                    <div className="bg-soft-pink p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg></div>
-                    <div><p className="text-sm text-gray-500">Total Points</p><p className="text-2xl font-bold">8,250</p></div>
+            {/* Cards Section (Statistik) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-rose-gold">
+                    <p className="text-sm text-gray-500 font-semibold">Total Sales (MoM)</p>
+                    <p className="text-3xl font-extrabold mt-1">Rp 12.540.000</p>
+                    <p className="text-sm text-green-500 mt-2">▲ 12% dari bulan lalu</p>
                 </div>
-                {/* ... Tambahkan Stats Card lainnya dari HTML asli ... */}
-                <div className="glassmorphism p-6 rounded-2xl shadow-lg flex items-center space-x-4">
-                    <div className="bg-soft-pink p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" /></svg></div>
-                    <div><p className="text-sm text-gray-500">Affiliate Level</p><p className="text-2xl font-bold">Gold</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-pink-600">
+                    <p className="text-sm text-gray-500 font-semibold">Komisi Menanti</p>
+                    <p className="text-3xl font-extrabold mt-1">Rp 1.254.000</p>
+                    <p className="text-sm text-gray-500 mt-2">Pembayaran berikutnya: 25 Okt</p>
                 </div>
-                <div className="glassmorphism p-6 rounded-2xl shadow-lg flex items-center space-x-4">
-                    <div className="bg-soft-pink p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg></div>
-                    <div><p className="text-sm text-gray-500">Current Rank</p><p className="text-2xl font-bold">#5</p></div>
-                </div>
-                <div className="glassmorphism p-6 rounded-2xl shadow-lg flex items-center space-x-4">
-                    <div className="bg-soft-pink p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg></div>
-                    <div><p className="text-sm text-gray-500">Total Sales</p><p className="text-2xl font-bold">Rp 3.083.431</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+                    <p className="text-sm text-gray-500 font-semibold">To-Do Selesai</p>
+                    <p className="text-3xl font-extrabold mt-1">{progress}%</p>
+                    <p className="text-sm text-blue-500 mt-2">Selesai: {completedTodosCount} / {totalTodos}</p>
                 </div>
             </div>
 
-            {/* Peringkat & Redeem Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Peringkat Poin Blizza */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-xl font-bold mb-4">Peringkat Poin Blizza</h2>
-                    {/* ... Tambahkan Tabel Peringkat dari HTML asli ... */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead><tr className="text-sm text-gray-500 border-b"><th className="py-3 px-2">Rank</th><th className="py-3 px-2">Nama ID</th><th className="py-3 px-2">Total Sales</th><th className="py-3 px-2 text-right">Poin</th></tr></thead>
-                            <tbody>
-                                <tr className="border-b hover:bg-pale-pink transition-colors"><td className="py-4 px-2 font-bold text-rose-gold">1</td><td className="py-4 px-2 font-semibold">suryaniputri007</td><td className="py-4 px-2">Rp 3.083.431</td><td className="py-4 px-2 font-bold text-right">32</td></tr>
-                                <tr className="border-b hover:bg-pale-pink transition-colors"><td className="py-4 px-2 font-bold text-rose-gold">2</td><td className="py-4 px-2 font-semibold">Nuralaithifaq</td><td className="py-4 px-2">Rp 3.221.084</td><td className="py-4 px-2 font-bold text-right">32</td></tr>
-                                <tr className="border-b hover:bg-pale-pink transition-colors"><td className="py-4 px-2 font-bold text-rose-gold">3</td><td className="py-4 px-2 font-semibold">Mbakranah001</td><td className="py-4 px-2">Rp 2.876.500</td><td className="py-4 px-2 font-bold text-right">31</td></tr>
-                                <tr className="hover:bg-pale-pink transition-colors"><td className="py-4 px-2 font-bold text-rose-gold">4</td><td className="py-4 px-2 font-semibold">blizzababy.id</td><td className="py-4 px-2">Rp 2.543.120</td><td className="py-4 px-2 font-bold text-right">29</td></tr>
-                            </tbody>
-                        </table>
+            {/* To-Do List Section (DENGAN FORM BARU) */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 className="text-xl font-bold mb-4">Your Priority To-Do List</h2>
+                
+                {/* --- Konten Dinamis --- */}
+                {isLoading ? (
+                    <div className="text-center py-8 text-gray-500">
+                        <RocketIcon className="animate-spin w-6 h-6 mx-auto mb-2" />
+                        <p>Mengambil data To-Do List...</p>
                     </div>
-                </div>
-
-                {/* Redeem Your Points */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-xl font-bold mb-4">Redeem Your Points</h2>
-                    {/* ... Tambahkan Reward Cards dari HTML asli ... */}
-                    <div className="space-y-4">
-                        <div className="border rounded-xl p-4 flex items-center justify-between hover:shadow-md transition-shadow"><div><p className="font-bold">Branded T-Shirt</p><p className="text-sm text-rose-gold font-semibold">1,100 Poin</p></div><button className="bg-soft-pink text-white text-sm font-bold py-2 px-4 rounded-lg hover-gradient transition-all">Redeem</button></div>
-                        <div className="border rounded-xl p-4 flex items-center justify-between hover:shadow-md transition-shadow"><div><p className="font-bold">$25 Gift Card</p><p className="text-sm text-rose-gold font-semibold">2,100 Poin</p></div><button className="bg-soft-pink text-white text-sm font-bold py-2 px-4 rounded-lg hover-gradient transition-all">Redeem</button></div>
-                        <div className="border rounded-xl p-4 flex items-center justify-between hover:shadow-md transition-shadow"><div><p className="font-bold">Wireless Earbuds</p><p className="text-sm text-rose-gold font-semibold">7,100 Poin</p></div><button className="bg-soft-pink text-white text-sm font-bold py-2 px-4 rounded-lg hover-gradient transition-all">Redeem</button></div>
-                        <div className="border rounded-xl p-4 flex items-center justify-between hover:shadow-md transition-shadow bg-gray-100 opacity-60"><div><p className="font-bold">Trip to Bali</p><p className="text-sm text-gray-500 font-semibold">15,000 Poin</p></div><button className="bg-gray-300 text-gray-500 text-sm font-bold py-2 px-4 rounded-lg cursor-not-allowed">Not Enough</button></div>
+                ) : error ? (
+                    <div className="text-center py-8 text-red-600 bg-red-50 rounded-lg">
+                        <CrossCircledIcon className="w-6 h-6 mx-auto mb-2" />
+                        <p>Error koneksi: {error}</p>
                     </div>
-                </div>
+                ) : (
+                    <ul className="space-y-3 mb-6">
+                        {todos.length === 0 ? (
+                            // ... (Empty State tetap sama) ...
+                            <div className="text-center py-4 text-gray-500 border border-dashed p-4 rounded-lg">
+                                <p>🎉 Semua To-Do Selesai! Saatnya santai, Bro.</p>
+                            </div>
+                            ) : (
+                            todos.map((todo) => (
+                                <li 
+                                    key={todo.id} 
+                                    className={`p-4 rounded-lg shadow-sm flex justify-between items-center transition-all ${
+                                        todo.isCompleted 
+                                            ? 'bg-green-50 text-gray-500 line-through' 
+                                            : 'bg-white hover:shadow-lg hover:bg-pale-pink/50' // Tambah hover style
+                                    }`}
+                                >
+                                    <div className='flex items-center space-x-3'>
+                                        {/* CHECKBOX/TOGGLE STATUS (Panggil handleToggleComplete) */}
+                                        <input 
+                                            type="checkbox" 
+                                            checked={todo.isCompleted} 
+                                            // <<< TAMBAH HANDLER UPDATE STATUS DI SINI >>>
+                                            onChange={() => handleToggleComplete(todo.id, todo.isCompleted)} 
+                                            className="h-5 w-5 text-rose-gold border-gray-300 rounded focus:ring-rose-gold cursor-pointer"
+                                        />
+                                        <div>
+                                            <span className="text-gray-800">{todo.title}</span>
+                                            {todo.description && <p className='text-xs text-gray-400 mt-1'>{todo.description}</p>}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* ACTION BUTTONS (Delete) */}
+                                    <button 
+                                        // <<< TAMBAH HANDLER DELETE DI SINI >>>
+                                        onClick={() => handleDeleteTodo(todo.id)} 
+                                        className="text-gray-400 hover:text-red-500 p-2 rounded-full transition-colors"
+                                        aria-label="Delete todo"
+                                    >
+                                        <Trash2Icon className="w-5 h-5" />
+                                    </button>
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                )}
+                {/* --- FORM TAMBAH TODO BARU --- */}
+                <form onSubmit={handleAddTodo} className='mt-4 flex space-x-2'>
+                    <input
+                        type="text"
+                        value={newTodoTitle}
+                        onChange={(e) => setNewTodoTitle(e.target.value)}
+                        placeholder="Tambahkan tugas baru..."
+                        className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-rose-gold focus:border-rose-gold transition-colors"
+                        disabled={isPosting}
+                    />
+                    <button
+                        type="submit"
+                        disabled={isPosting || !newTodoTitle.trim()}
+                        className="bg-rose-gold text-white font-semibold px-4 py-3 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        {isPosting ? '...' : <PlusIcon className="w-5 h-5" />}
+                    </button>
+                </form>
             </div>
         </>
     );
