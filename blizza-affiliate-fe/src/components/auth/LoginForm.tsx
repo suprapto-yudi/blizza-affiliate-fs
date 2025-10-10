@@ -54,7 +54,9 @@ export default function LoginForm() {
             // 3. Sukses: Simpan Token (Jika ada) dan Redirect
             // ==> alert(`Login Berhasil! Selamat datang, ${data.user.fullName || 'Affiliate'}.`);
             // kode baris di atas dihilangkan karena kita tidak perlu alert.
-            AuthService.setToken(data.token); // Simpan token
+            // AuthService.setToken(data.token); // Simpan token
+            // Kode Baru:
+            AuthService.setAuth(data.token, data.user); // <<< PASTIKAN KAMU MENGGUNAKAN data.user
 
             // Di sini, kamu harus menyimpan token JWT (data.token) ke Local Storage
             // atau Cookies menggunakan helper dari src/lib/Auth.ts.

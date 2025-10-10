@@ -1,56 +1,147 @@
+// src/app/settings/page.tsx
+'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { AuthService, User } from '@/lib/Auth'; // <<< Ambil AuthService dan Tipe User
 
 const SettingsContent = () => {
-    // Ambil kode Settings Page Content dari HTML aslimu
+    // State untuk menyimpan data profil yang dimuat
+    const [profile, setProfile] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Ambil data user dari AuthService (Local Storage)
+        const user = AuthService.getUser();
+        if (user) {
+            setProfile(user);
+        }
+        setIsLoading(false);
+    }, []);
+
+    // Placeholder untuk state form (untuk diimplementasi fitur edit nanti)
+    const [formData, setFormData] = useState({
+        fullName: profile?.fullName || '',
+        email: profile?.email || '',
+        phone: profile?.phone || '',
+        // tambahkan field lain jika ada
+    });
+
+    useEffect(() => {
+        if (profile) {
+            setFormData({
+                fullName: profile.fullName || '',
+                email: profile.email || '',
+                phone: profile.phone || '',
+            });
+        }
+    }, [profile]);
+    
+    // Handler untuk simulasi Update (nantinya memanggil API PUT /api/profile)
+    const handleUpdateProfile = (e: React.FormEvent) => {
+        e.preventDefault();
+        alert('Fitur Update Profil belum terhubung ke API backend! Data saat ini dari Local Storage.');
+    };
+    
+    // Handler untuk Change Password (nantinya memanggil API POST /api/change-password)
+    const handleChangePassword = (e: React.FormEvent) => {
+        e.preventDefault();
+        alert('Fitur Ganti Password belum terhubung ke API backend!');
+    };
+
+    if (isLoading) {
+        return <div className="text-center py-10 text-gray-500">Loading Profile...</div>;
+    }
+
     return (
         <>
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold">Account Settings ⚙️</h1>
-                <p className="text-gray-500 mt-1">Manage your profile, password, and payment details.</p>
-            </header>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left column for forms */}
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Profile Information */}
+            <h1 className="text-3xl font-bold mb-6 text-pink-600">Account Settings ⚙️</h1>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Bagian Kiri: Profile Information & Password */}
+                <div className="lg:col-span-2 space-y-6">
+                    
+                    {/* --- Profile Information --- */}
                     <div className="bg-white p-6 rounded-2xl shadow-lg">
-                        <h2 className="text-xl font-bold mb-4 border-b pb-4">Profile Information</h2>
-                        <form className="space-y-4">
-                            <div><label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label><input type="text" id="name" defaultValue="Suryani Putri" className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-soft-pink"/></div>
-                            <div><label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="email" defaultValue="suryaniputri007@example.com" className="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm" disabled/></div>
-                            <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label><input type="tel" id="phone" defaultValue="081234567890" className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-soft-pink"/></div>
-                            <div className="text-right pt-4"><button type="submit" className="bg-soft-pink text-white font-bold py-2 px-6 rounded-lg hover-gradient transition-all">Save Profile</button></div>
+                        <h2 className="text-xl font-bold mb-4 border-b pb-2">Profile Information</h2>
+                        <form onSubmit={handleUpdateProfile} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.fullName} // Tampil dari state profil
+                                    disabled // Saat ini hanya display, tidak bisa diubah
+                                    className="mt-1 block w-full p-3 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={formData.email} // Tampil dari state profil
+                                    disabled
+                                    className="mt-1 block w-full p-3 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                                <input
+                                    type="text"
+                                    value={formData.phone || ''} // Tampil dari state profil
+                                    disabled
+                                    className="mt-1 block w-full p-3 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled // Tombol dinonaktifkan karena belum ada logic API update
+                                className="bg-soft-pink text-white font-bold py-2 px-4 rounded-lg transition-colors hover:bg-rose-gold disabled:bg-gray-400"
+                            >
+                                Save Profile
+                            </button>
                         </form>
                     </div>
-                    {/* Change Password */}
+
+                    {/* --- Change Password --- */}
                     <div className="bg-white p-6 rounded-2xl shadow-lg">
-                        <h2 className="text-xl font-bold mb-4 border-b pb-4">Change Password</h2>
-                        <form className="space-y-4">
-                            <div><label htmlFor="current_password" className="block text-sm font-medium text-gray-700">Current Password</label><input type="password" id="current_password" className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-soft-pink"/></div>
-                            <div><label htmlFor="new_password" className="block text-sm font-medium text-gray-700">New Password</label><input type="password" id="new_password" className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-soft-pink"/></div>
-                            <div className="text-right pt-4"><button type="submit" className="bg-soft-pink text-white font-bold py-2 px-6 rounded-lg hover-gradient transition-all">Update Password</button></div>
+                        <h2 className="text-xl font-bold mb-4 border-b pb-2">Change Password</h2>
+                        <form onSubmit={handleChangePassword} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                                <input type="password" className="mt-1 block w-full p-3 border border-gray-300 rounded-md"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                                <input type="password" className="mt-1 block w-full p-3 border border-gray-300 rounded-md"/>
+                            </div>
+                            <button
+                                type="submit"
+                                className="bg-rose-gold text-white font-bold py-2 px-4 rounded-lg transition-colors hover:opacity-90"
+                            >
+                                Update Password
+                            </button>
                         </form>
                     </div>
                 </div>
-                {/* Right column for notifications */}
-                <div className="bg-white p-6 rounded-2xl shadow-lg h-fit">
-                    <h2 className="text-xl font-bold mb-4 border-b pb-4">Notifications</h2>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">Email Notifications</p>
-                                <p className="text-sm text-gray-500">Get emails about your performance.</p>
+                
+                {/* Bagian Kanan: Notifications (Mockup Statis) */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 className="text-xl font-bold mb-4 border-b pb-2">Notifications</h2>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-medium">Email Notifications</p>
+                                    <p className="text-sm text-gray-500">Get emails about your performance.</p>
+                                </div>
+                                <input type="checkbox" className="toggle toggle-sm bg-rose-gold" defaultChecked />
                             </div>
-                            {/* Toggle Switch */}
-                            <label className="inline-flex items-center cursor-pointer"><input type="checkbox" value="" className="sr-only peer" defaultChecked={true}/><div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-pink-300 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-gold"></div></label>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">Weekly Reports</p>
-                                <p className="text-sm text-gray-500">Receive a weekly summary.</p>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-medium">Weekly Reports</p>
+                                    <p className="text-sm text-gray-500">Receive a weekly summary.</p>
+                                </div>
+                                <input type="checkbox" className="toggle toggle-sm bg-rose-gold" />
                             </div>
-                            {/* Toggle Switch */}
-                            <label className="inline-flex items-center cursor-pointer"><input type="checkbox" value="" className="sr-only peer"/><div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-pink-300 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-gold"></div></label>
                         </div>
                     </div>
                 </div>
@@ -58,6 +149,7 @@ const SettingsContent = () => {
         </>
     );
 };
+
 export default function SettingsPage() {
     return (
         <DashboardLayout>

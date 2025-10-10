@@ -94,24 +94,51 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+// Endpoint 2: Login Pengguna - LOGIN
 
-// Endpoint 2: Login Pengguna (LOGIN)
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await prisma.user.findUnique({ where: { email } });
+        // 1. Cari User di DB (Ambil semua field yang dibutuhkan)
+        // Kita menggunakan SELECT untuk mengambil data yang dibutuhkan oleh frontend
+        const user = await prisma.user.findUnique({ 
+            where: { email },
+            select: {
+                id: true,
+                email: true,
+                password: true, // WAJIB ada untuk verifikasi password
+                fullName: true, // <<< KOREKSI PENTING
+                phone: true, // <<< KOREKSI PENTING
+                shopeeAccount: true,
+                address: true,
+            }
+        });
+
         if (!user) {
             return res.status(400).json({ message: 'Kredensial tidak valid.' });
         }
 
+        // 2. Verifikasi Password (menggunakan user.password dari SELECT di atas)
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Kredensial tidak valid.' });
         }
+        
+        // 3. Persiapkan Objek User untuk Respon dan JWT Payload
+        // Hapus field password dari objek user sebelum dikirim ke frontend atau JWT
+        const userWithoutPassword = {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName, // <<< KOREKSI PENTING
+            phone: user.phone, // <<< KOREKSI PENTING
+            shopeeAccount: user.shopeeAccount,
+            address: user.address,
+        };
 
-        const payload = { user: { id: user.id, email: user.email, name: user.name } };
+        const payload = { user: userWithoutPassword }; // Gunakan objek lengkap untuk JWT
 
+        // 4. Buat dan Kirim JWT
         jwt.sign(
             payload,
             process.env.JWT_SECRET,
@@ -122,7 +149,7 @@ app.post('/api/login', async (req, res) => {
                     success: true,
                     message: 'Login Berhasil!',
                     token,
-                    user: { id: user.id, email: user.email, name: user.name }
+                    user: userWithoutPassword // <<< KOREKSI PENTING: Kirim objek lengkap
                 });
             }
         );
@@ -131,7 +158,6 @@ app.post('/api/login', async (req, res) => {
         res.status(500).json({ message: 'Server error saat login.' });
     }
 });
-
 
 // =============== ENDPOINT TODO LIST (DILINDUNGI) ===============
 // (Semua kode CRUD ToDo di sini sudah benar dan siap digunakan)
@@ -195,6 +221,53 @@ app.delete('/api/todos/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// server.js (TAMBAHKAN DI BAGIAN ENDPOINT SETELAH authMiddleware)
+
+// Endpoint 4: Update Profile (PUT /api/profile)
+app.put('/api/profile', authMiddleware, async (req, res) => {
+    // Ambil user ID dari payload JWT
+    const userId = req.user.id;
+    // Ambil data yang ingin diupdate (pastikan nama field sesuai)
+    const { fullName, phone, shopeeAccount, address } = req.body;
+
+    // Minimal harus ada satu field yang diisi
+    if (!fullName && !phone && !shopeeAccount && !address) {
+        return res.status(400).json({ message: 'Minimal satu field profil harus diisi untuk diupdate.' });
+    }
+
+    try {
+        // Objek untuk update Prisma (hanya field yang memiliki nilai)
+        const updateData = {};
+        if (fullName) updateData.fullName = fullName;
+        if (phone) updateData.phone = phone;
+        if (shopeeAccount) updateData.shopeeAccount = shopeeAccount;
+        if (address) updateData.address = address;
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                email: true,
+                fullName: true,
+                phone: true,
+                shopeeAccount: true,
+                address: true,
+            }
+        });
+
+        // Kirim respon sukses dengan data user terbaru
+        res.json({ 
+            success: true, 
+            message: 'Profil berhasil diperbarui!', 
+            user: updatedUser 
+        });
+
+    } catch (error) {
+        console.error("Error Update Profile:", error);
+        res.status(500).json({ message: 'Server error saat memperbarui profil.' });
+    }
+});
 
 // =============== START SERVER ===============
 app.listen(PORT, () => {

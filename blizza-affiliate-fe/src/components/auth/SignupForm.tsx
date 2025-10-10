@@ -46,21 +46,32 @@ export default function SignupForm() {
                 body: JSON.stringify(formData),
             });
 
-            const data = await response.json();
+            // <<< PERBAIKAN: Ambil JSON response HANYA SEKALI >>>
+            const data = await response.json(); 
+            // ----------------------------------------------------
 
-            if (!response.ok) {
-                // Jika server merespon 400 (Bad Request) atau 500 (Internal Server Error)
+            if (response.ok) {
+                // Asumsi: Backend mengirimkan token dan user saat Sign Up sukses
+                // NOTE: Kita fokus pada redirect ke Login dulu, autologin diabaikan sementara
+                // if (data.token && data.user) {
+                //     AuthService.setAuth(data.token, data.user); 
+                // }
+                
+                // 3. Sukses: Redirect ke Login
+                setSuccess('Pendaftaran Berhasil! Mengarahkanmu ke halaman Login...');
+                
+                setTimeout(() => {
+                    router.push('/login?success=true'); // Redirect ke Login
+                }, 1500); 
+                return;
+
+            } else {
+                // 4. Gagal: Tampilkan pesan error dari backend
+                // Data dijamin ada karena kita panggil response.json() di atas
                 setError(data.message || 'Pendaftaran gagal karena masalah server.');
                 setIsLoading(false);
                 return;
             }
-            
-            // 3. Sukses: Redirect ke Login
-            setSuccess('Pendaftaran Berhasil! Mengarahkanmu ke halaman Login...');
-            
-            setTimeout(() => {
-                router.push('/login'); // Redirect
-            }, 2000); 
 
         } catch (err) {
             // Error Jaringan (misal, backend belum running)

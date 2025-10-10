@@ -1,6 +1,6 @@
 // src/components/layout/DashboardLayout.tsx (Koreksi Final)
 'use client'; 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react'; // <<< TAMBAH useState DI SINI
 import Link from 'next/link'; 
 import { useRouter, usePathname } from 'next/navigation'; // <<< TAMBAH usePathname
 import { AuthService } from '@/lib/Auth'; 
@@ -36,13 +36,8 @@ const NavLink = ({ href, icon, children }: { href: string, icon: React.ReactNode
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
-    // LOGIC PROTEKSI AUTH
-    useEffect(() => {
-        // Cek token saat component dimuat
-        if (!AuthService.isLoggedIn()) {
-            router.push('/login'); // Redirect jika tidak ada token
-        }
-    }, [router]);
+    // 1. Tambahkan state untuk mengontrol apakah klien sudah siap render
+    const [isClientReady, setIsClientReady] = useState(false); 
 
     // HANDLER LOGOUT
     const handleLogout = () => {
@@ -50,11 +45,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/login');
     };
 
-    // Tampilkan null/loading jika belum login (agar tidak ada flicker)
-    if (!AuthService.isLoggedIn()) {
-        return null; 
+    // LOGIC PROTEKSI AUTH dan HYDRATION FIX
+    useEffect(() => {
+        // Cek Auth di sisi klien (setelah mount)
+        if (!AuthService.isLoggedIn()) {
+            // Jika tidak ada token, langsung redirect
+            router.push('/login'); 
+        } else {
+            // Jika token ada, kita set state siap render
+            setIsClientReady(true); 
+        }
+    }, [router]);
+
+    // 2. TUNDA RENDER: Tampilkan loading/null jika belum siap (saat SSR)
+    if (!isClientReady) {
+        return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Loading...</div>;
     }
 
+    // 3. RENDER FINAL: Hanya render jika isClientReady sudah true
     return (
         <div className="flex h-screen bg-pale-pink overflow-hidden">
             {/* Sidebar */}
