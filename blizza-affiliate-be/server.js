@@ -16,10 +16,16 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // =============== MIDDLEWARE UTAMA ===============
-app.use(express.json());
+// app.use(express.json());
 app.use(cors({
-    origin: 'http://localhost:3000' 
+    origin: 'http://localhost:3000', // Izinkan hanya dari frontend Next.js
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // <<< TAMBAH PUT dan DELETE
+    credentials: true,
+    optionsSuccessStatus: 204,
 }));
+// ----------------------------------------
+
+app.use(express.json()); // Body parser
 
 // (authMiddleware dan semua Endpoint di bawahnya sudah benar dan TIDAK PERLU DIUBAH)
 // ...
@@ -257,7 +263,9 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         });
 
         // Kirim respon sukses dengan data user terbaru
-        res.json({ 
+        // res.json({ 
+        // KODE PERBAIKAN: Eksplisitkan status 200
+        res.status(200).json({
             success: true, 
             message: 'Profil berhasil diperbarui!', 
             user: updatedUser 
@@ -265,7 +273,9 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
 
     } catch (error) {
         console.error("Error Update Profile:", error);
-        res.status(500).json({ message: 'Server error saat memperbarui profil.' });
+        // PASTIKAN PESAN ERROR SELALU ADA
+        // Kita paksa kembalikan string jika error tidak punya .message
+        res.status(500).json({ message: error.message || 'Server error saat memperbarui profil.' });
     }
 });
 
