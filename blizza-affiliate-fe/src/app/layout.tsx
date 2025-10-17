@@ -1,7 +1,12 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// --- (1) Pertahankan Import Font Geist ---
+import { Geist, Geist_Mono } from "next/font/google"; 
 import "./globals.css";
+
+// <<< TAMBAHKAN IMPORT AuthProvider INI >>>
+import { AuthProvider } from '@/lib/AuthContext'; 
+// <<< -------------------------------- >>>
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +31,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+        {/* <<< BUNGKUS {children} DENGAN AuthProvider >>> */}
+        <AuthProvider>
+         {children}
+        </AuthProvider>
+        {/* <<< ----------------------------------- >>> */}
       </body>
     </html>
   );

@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation'; // <<< TAMBAH usePathname
 import { AuthService } from '@/lib/Auth'; 
 
+// <<< IMPORT BARU >>>
+import { useAuth } from '@/lib/AuthContext'; 
+// <<< ------------ >>>
+
 // --- Icon Definitions (di luar komponen utama) ---
 const HomeIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>);
 const LeaderboardIcon = (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>);
@@ -37,32 +41,59 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
 
     // 1. Tambahkan state untuk mengontrol apakah klien sudah siap render
-    const [isClientReady, setIsClientReady] = useState(false); 
+    // const [isClientReady, setIsClientReady] = useState(false); 
+
+    // <<< GANTI LOGIC LAMA DENGAN useAuth() >>>
+    // Kita ambil token, user (opsional), isLoading, dan logout handler dari Context
+    const { token, isLoading, logout } = useAuth(); 
+    // <<< -------------------------------- >>>
 
     // HANDLER LOGOUT
-    const handleLogout = () => {
-        AuthService.logout(); 
-        router.push('/login');
-    };
+    // const handleLogout = () => {
+    //     AuthService.logout(); 
+    //     router.push('/login');
+    // };
 
+    // HANDLER LOGOUT BARU
+    const handleLogout = () => {
+        // <<< PANGGIL LOGOUT DARI CONTEXT >>>
+        logout(); 
+        // <<< --------------------------- >>>
+        router.push('/login');
+ };
+
+    // HAPUS SELURUH BLOK useEffect LAMA YANG MEMERIKSA isClientReady/AuthService.isLoggedIn()
+    // 1. LOGIC PROTEKSI AUTH dan HYDRATION FIX
     // LOGIC PROTEKSI AUTH dan HYDRATION FIX
-    useEffect(() => {
+    // useEffect(() => {
         // Cek Auth di sisi klien (setelah mount)
-        if (!AuthService.isLoggedIn()) {
+    //     if (!AuthService.isLoggedIn()) {
             // Jika tidak ada token, langsung redirect
-            router.push('/login'); 
-        } else {
+    //         router.push('/login'); 
+    //     } else {
             // Jika token ada, kita set state siap render
-            setIsClientReady(true); 
-        }
-    }, [router]);
+    //         setIsClientReady(true); 
+    //     }
+    // }, [router]);
 
     // 2. TUNDA RENDER: Tampilkan loading/null jika belum siap (saat SSR)
-    if (!isClientReady) {
-        return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Loading...</div>;
+    // if (!isClientReady) {
+    //     return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Loading...</div>;
+    // }
+
+    // [1] Tampilkan Loading State jika Context belum selesai cek Local Storage
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Memeriksa otentikasi...</div>;
+ }
+    
+    // [2] Redirect jika TIDAK ADA token setelah loading selesai
+    if (!token) {
+        // Ini memastikan redirect terjadi setelah loading, tanpa flicker
+        router.push('/login');
+        return null; 
     }
 
-    // 3. RENDER FINAL: Hanya render jika isClientReady sudah true
+    // 3. RENDER FINAL: Hanya render jika token sudah ada
     return (
         <div className="flex h-screen bg-pale-pink overflow-hidden">
             {/* Sidebar */}
