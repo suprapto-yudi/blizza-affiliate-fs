@@ -1,5 +1,6 @@
 // src/app/settings/page.tsx
 'use client';
+import { useRouter } from 'next/navigation'; // <<< INI PENTING: Import hook router
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import React, { useState, useEffect } from 'react';
 // <<< TAMBAHKAN BARIS INI >>>
@@ -16,10 +17,23 @@ interface ProfileUpdateResponse {
 // <<< --------------------------- >>>
 
 const SettingsContent = () => {
+    // 1. DEKLARASI HOOKS DI AWAL KOMPONEN
+    const router = useRouter(); // <<< TAMBAHKAN DEKLARASI INI DI SINI
+    
     // State untuk menyimpan data profil yang dimuat
     const [profile, setProfile] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false); // State untuk tombol Save Profile
+
+    // [1] PENEMPATAN STATE PASSWORD BARU: Di sini
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+    });
+
+    // Deklarasi state loading khusus Password
+    const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+    // ------------------------------------------
 
     useEffect(() => {
         // Ambil data user dari AuthService (Local Storage)
@@ -118,10 +132,59 @@ const SettingsContent = () => {
     // ------------------------------------------
     
     // Handler untuk Change Password (nantinya memanggil API POST /api/change-password)
-    const handleChangePassword = (e: React.FormEvent) => {
+    // Ganti fungsi ini di page.tsx
+    const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        alert('Fitur Ganti Password belum terhubung ke API backend!');
+
+        const { currentPassword, newPassword } = passwordData;
+
+        // 1. Validasi input di sisi klien
+        if (!currentPassword || !newPassword) {
+            alert('Password saat ini dan Password baru wajib diisi.');
+            return;
+        }
+
+        const token = AuthService.getToken();
+
+        // Menggunakan state loading baru
+        setIsPasswordSaving(true);
+
+        try {
+            const response = await fetch('http://localhost:4000/api/change-password', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ currentPassword, newPassword }),
+            });
+
+            // Coba parse JSON
+            const result = await response.json();
+
+            if (response.ok) {
+                // Sukses: Password diganti
+                alert(`✅ ${result.message}`); 
+
+                // Hapus token dan redirect ke login (sesi lama kadaluarsa)
+                AuthService.logout();
+                router.push('/login');
+            } else {
+                // Gagal: Password lama salah, atau validasi gagal
+                const errorMessage = result.message || 'Gagal mengubah password karena kesalahan server.';
+                alert(`❌ ${errorMessage}`);
+            }
+
+        } catch (error) {
+            alert('❌ Gagal terhubung ke server untuk mengubah password.');
+        } finally {
+            // Bersihkan form
+            setPasswordData({ currentPassword: '', newPassword: '' });
+            // Menonaktifkan state loading
+            setIsPasswordSaving(false);
+        }
     };
+    // <<< ------------------------------------ >>>
 
     if (isLoading) {
         return <div className="text-center py-10 text-gray-500">Loading Profile...</div>;
@@ -187,22 +250,45 @@ const SettingsContent = () => {
                     {/* --- Change Password --- */}
                     <div className="bg-white p-6 rounded-2xl shadow-lg">
                         <h2 className="text-xl font-bold mb-4 border-b pb-2">Change Password</h2>
+                        
+                        {/* PASTIKAN FORM INI TERTUTUP DAN HANYA ADA INPUT & BUTTON DI DALAMNYA */}
                         <form onSubmit={handleChangePassword} className="space-y-4">
+                            
+                            {/* Input Current Password */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Current Password</label>
-                                <input type="password" className="mt-1 block w-full p-3 border border-gray-300 rounded-md"/>
+                                <input 
+                                    type="password" 
+                                    value={passwordData.currentPassword} 
+                                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} 
+                                    className="mt-1 block w-full p-3 border border-gray-300 rounded-md"
+                                />
                             </div>
+                            
+                            {/* Input New Password */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">New Password</label>
-                                <input type="password" className="mt-1 block w-full p-3 border border-gray-300 rounded-md"/>
+                                <input 
+                                    type="password" 
+                                    value={passwordData.newPassword} 
+                                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} 
+                                    className="mt-1 block w-full p-3 border border-gray-300 rounded-md"
+                                />
                             </div>
+                            
+                            {/* <<< TAMBAHKAN KEMBALI TOMBOL SUBMIT INI >>> */}
                             <button
                                 type="submit"
-                                className="bg-rose-gold text-white font-bold py-2 px-4 rounded-lg transition-colors hover:opacity-90"
+                                // <<< HUBUNGKAN STATE DI SINI >>>
+                                disabled={isPasswordSaving} // Nonaktifkan tombol saat loading
+                                className="bg-soft-pink text-white font-bold py-2 px-4 rounded-lg transition-colors hover:opacity-90 disabled:bg-gray-400"
                             >
-                                Update Password
+                                {/* <<< TEKS DINAMIS DI SINI >>> */}
+                                {isPasswordSaving ? 'Updating...' : 'Update Password'} 
                             </button>
-                        </form>
+                            {/* <<< ----------------------------------- >>> */}
+
+                        </form> {/* PASTIKAN TAG FORM TERTUTUP DI SINI */}
                     </div>
                 </div>
                 

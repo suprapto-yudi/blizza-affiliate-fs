@@ -279,6 +279,63 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     }
 });
 
+// server.js (ENDPOINT BARU: Change Password)
+
+app.put('/api/change-password', authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    // Ambil data dari frontend: currentPassword dan newPassword
+    const { currentPassword, newPassword } = req.body;
+
+    // 1. Validasi Input Dasar
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Password saat ini dan Password baru wajib diisi.' });
+    }
+    // Tambahkan validasi keamanan lain (min length) jika perlu
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password baru minimal harus 6 karakter.' });
+    }
+
+    try {
+        // 2. Ambil user (termasuk password hash-nya)
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { password: true }
+        });
+
+        if (!user) {
+            // Ini seharusnya tidak terjadi karena authMiddleware sudah jalan
+            return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
+        }
+
+        // 3. Verifikasi Current Password
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Password saat ini salah.' });
+        }
+
+        // 4. Hash New Password
+        const salt = await bcrypt.genSalt(10);
+        const newHashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // 5. Update Password di Database
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: newHashedPassword }
+        });
+
+        // 6. Respon Sukses
+        // Penting: Kirim Status 200 OK
+        res.status(200).json({ 
+            success: true, 
+            message: 'Password berhasil diperbarui! Anda harus login kembali.' 
+        });
+
+    } catch (error) {
+        console.error("Error Change Password:", error);
+        res.status(500).json({ message: 'Server error saat mengganti password.' });
+    }
+});
+
 // =============== START SERVER ===============
 app.listen(PORT, () => {
     console.log(`🚀 Express Server berjalan di http://localhost:${PORT}`);
