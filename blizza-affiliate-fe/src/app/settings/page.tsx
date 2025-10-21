@@ -6,8 +6,13 @@ import React, { useState, useEffect } from 'react';
 // <<< TAMBAHKAN BARIS INI >>>
 // import { apiFetch } from '@/lib/ApiService'; 
 // <<< ----------------- >>>
-import { AuthService, User } from '@/lib/Auth'; // <<< Ambil AuthService dan Tipe User
+// import { AuthService, User } from '@/lib/Auth'; // <<< Ambil AuthService dan Tipe User
 
+// <<< IMPORT BARU DARI CONTEXT >>>
+import { useAuth } from '@/lib/AuthContext'; 
+// <<< ----------------------- >>>
+
+/*
 // <<< TAMBAHKAN INTERFACE BARU INI >>>
 interface ProfileUpdateResponse {
     success: boolean;
@@ -15,15 +20,28 @@ interface ProfileUpdateResponse {
     user: User; // User adalah objek user lengkap yang dikembalikan backend
 }
 // <<< --------------------------- >>>
+*/
 
 const SettingsContent = () => {
     // 1. DEKLARASI HOOKS DI AWAL KOMPONEN
+    // 1. AMBIL SEMUA DARI CONTEXT
+    const { user: authUser, token, login, logout } = useAuth();
     const router = useRouter(); // <<< TAMBAHKAN DEKLARASI INI DI SINI
     
+    /*
     // State untuk menyimpan data profil yang dimuat
     const [profile, setProfile] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false); // State untuk tombol Save Profile
+    */
+
+    // State lokal untuk Form Profile
+    const [formData, setFormData] = useState({
+        // Langsung ambil nilai awal dari Context (authUser)
+        fullName: authUser?.fullName || '',
+        email: authUser?.email || '',
+        phone: authUser?.phone || '',
+    });
 
     // [1] PENEMPATAN STATE PASSWORD BARU: Di sini
     const [passwordData, setPasswordData] = useState({
@@ -32,9 +50,11 @@ const SettingsContent = () => {
     });
 
     // Deklarasi state loading khusus Password
+    const [isSaving, setIsSaving] = useState(false);
     const [isPasswordSaving, setIsPasswordSaving] = useState(false);
     // ------------------------------------------
 
+    /*
     useEffect(() => {
         // Ambil data user dari AuthService (Local Storage)
         const user = AuthService.getUser();
@@ -43,7 +63,9 @@ const SettingsContent = () => {
         }
         setIsLoading(false);
     }, []);
+    */
 
+    /*
     // Placeholder untuk state form (untuk diimplementasi fitur edit nanti)
     const [formData, setFormData] = useState({
         fullName: profile?.fullName || '',
@@ -61,7 +83,21 @@ const SettingsContent = () => {
             });
         }
     }, [profile]);
+    */
     
+    // EFEK UNTUK SINKRONISASI (penting saat user berhasil login atau data user dimuat pertama)
+    useEffect(() => {
+        // Hanya update formData jika Context user sudah ada dan berbeda
+        if (authUser) {
+            setFormData({
+                fullName: authUser.fullName || '',
+                email: authUser.email || '',
+                phone: authUser.phone || '',
+            });
+        }
+        // Dependensi: authUser memastikan state lokal sinkron dengan state global
+    }, [authUser]);
+
     // Handler untuk simulasi Update (nantinya memanggil API PUT /api/profile)
     // const handleUpdateProfile = (e: React.FormEvent) => {
     //     e.preventDefault();
@@ -69,6 +105,7 @@ const SettingsContent = () => {
     // };
 
     // --- MODIFIKASI: HANDLER UPDATE PROFILE ---
+    // --- HANDLER 1: UPDATE PROFILE (Menggunakan Context.login) ---
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
@@ -80,16 +117,19 @@ const SettingsContent = () => {
             // (email tidak diizinkan diubah)
         };
 
-        const token = AuthService.getToken();
+        // Cek token dari Context
+        // const token = AuthService.getToken();
         if (!token) {
             alert("Sesi berakhir. Mohon login ulang.");
             // Anda bisa tambahkan redirect ke /login di sini
             setIsSaving(false);
+            logout(); // Panggil logout dari Context
+            router.push('/login');
             return;
         }
         
         try {
-            const response = await fetch('http://localhost:4000/api/profile', { // <<< GUNAKAN URL BACKEND LENGKAP
+            const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/profile', { // <<< GUNAKAN URL BACKEND LENGKAP
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,16 +142,19 @@ const SettingsContent = () => {
             const result = await response.json();
 
             // 2. Cek apakah respons sukses (Status 200-299)
-            if (response.ok) {
+            if (response.ok && result.success && result.user) {
                 // **BLOK SUKSES:** Server mengirim 200 OK
-                if (result.success && result.user) {
-                    AuthService.setAuth(token, result.user); 
-                    setProfile(result.user);
-                    alert('✅ Profil berhasil diperbarui!');
-                } else {
+                // if (result.success && result.user) {
+                    // AuthService.setAuth(token, result.user); 
+                    // setProfile(result.user);
+                alert('✅ Profil berhasil diperbarui!');
+                // } else {
                     // Ini seharusnya tidak terjadi jika backend benar
-                    alert('⚠️ Gagal: Respons sukses tapi data user tidak lengkap.');
-                }
+                    // alert('⚠️ Gagal: Respons sukses tapi data user tidak lengkap.');
+                // }
+                // 3. PERBARUI CONTEXT dengan data user terbaru
+                login(token, result.user); // Panggil login dari Context untuk update user
+
             } else {
                 // **BLOK GAGAL:** Status Code 4xx atau 5xx
                 const errorMessage = result.message || response.statusText;
@@ -120,11 +163,13 @@ const SettingsContent = () => {
 
         } catch (error: any) {
             // **BLOK GAGAL TEKNIS:** Kegagalan Jaringan/Koneksi
+            /*
             let errorMessage = 'Gagal terhubung ke server. Pastikan server Express berjalan.';
             if (error.message) {
                 errorMessage = error.message;
             }
-            alert(`❌ Gagal memperbarui profil: ${errorMessage}`);
+            */
+            alert('❌ Gagal terhubung ke server. Pastikan server Express berjalan.');
         } finally {
             setIsSaving(false);
         }
@@ -132,6 +177,7 @@ const SettingsContent = () => {
     // ------------------------------------------
     
     // Handler untuk Change Password (nantinya memanggil API POST /api/change-password)
+    // --- HANDLER 2: CHANGE PASSWORD (Menggunakan Context.logout) ---
     // Ganti fungsi ini di page.tsx
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -144,13 +190,21 @@ const SettingsContent = () => {
             return;
         }
 
-        const token = AuthService.getToken();
+        // const token = AuthService.getToken();
+
+        // **2. Cek Token dari Context**
+        if (!token) {
+            alert("Sesi berakhir. Mohon login ulang.");
+            logout(); // Panggil logout dari Context
+            router.push('/login');
+            return;
+        }
 
         // Menggunakan state loading baru
         setIsPasswordSaving(true);
 
         try {
-            const response = await fetch('http://localhost:4000/api/change-password', {
+            const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/change-password', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -167,7 +221,8 @@ const SettingsContent = () => {
                 alert(`✅ ${result.message}`); 
 
                 // Hapus token dan redirect ke login (sesi lama kadaluarsa)
-                AuthService.logout();
+                // AuthService.logout();
+                logout(); // Panggil logout dari Context
                 router.push('/login');
             } else {
                 // Gagal: Password lama salah, atau validasi gagal
@@ -186,9 +241,11 @@ const SettingsContent = () => {
     };
     // <<< ------------------------------------ >>>
 
+    /*
     if (isLoading) {
         return <div className="text-center py-10 text-gray-500">Loading Profile...</div>;
     }
+    */
 
     return (
         <>

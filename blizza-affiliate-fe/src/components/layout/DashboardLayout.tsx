@@ -1,9 +1,10 @@
 // src/components/layout/DashboardLayout.tsx (Koreksi Final)
 'use client'; 
-import React, { useEffect, useState } from 'react'; // <<< TAMBAH useState DI SINI
+import React, { useEffect } from 'react';
+// import React, { useEffect, useState } from 'react'; // <<< TAMBAH useState DI SINI
 import Link from 'next/link'; 
 import { useRouter, usePathname } from 'next/navigation'; // <<< TAMBAH usePathname
-import { AuthService } from '@/lib/Auth'; 
+// import { AuthService } from '@/lib/Auth'; 
 
 // <<< IMPORT BARU >>>
 import { useAuth } from '@/lib/AuthContext'; 
@@ -76,6 +77,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     //     }
     // }, [router]);
 
+    // <<< KODE PROTEKSI BARU (YANG HILANG) >>>
+    useEffect(() => {
+        // Hanya jalankan redirect jika loading sudah selesai dan tidak ada token
+        if (!isLoading && !token) { 
+            router.push('/login'); 
+        }
+    }, [token, isLoading, router]);
+    // <<< -------------------------------- >>>
+
     // 2. TUNDA RENDER: Tampilkan loading/null jika belum siap (saat SSR)
     // if (!isClientReady) {
     //     return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Loading...</div>;
@@ -83,13 +93,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // [1] Tampilkan Loading State jika Context belum selesai cek Local Storage
     if (isLoading) {
-        return <div className="min-h-screen flex items-center justify-center bg-pale-pink">Memeriksa otentikasi...</div>;
- }
+        return (
+            // Pastikan loading screen mengisi seluruh layar
+            <div className="min-h-screen flex items-center justify-center bg-pale-pink">
+                Memeriksa otentikasi...
+            </div>
+        );
+    }
     
     // [2] Redirect jika TIDAK ADA token setelah loading selesai
     if (!token) {
-        // Ini memastikan redirect terjadi setelah loading, tanpa flicker
-        router.push('/login');
+        // Redirect sudah dipanggil di useEffect di atas, jadi kita hanya return null di sini
+        // router.push('/login');
         return null; 
     }
 
